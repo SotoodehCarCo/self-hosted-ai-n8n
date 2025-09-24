@@ -1,6 +1,6 @@
 volumes:
   n8n_storage:
-  postgres_storage:
+  n8n_postgres_storage:
 
 networks:
   demo:
@@ -14,7 +14,7 @@ x-n8n: &service-n8n
     - external_net
   environment:
     - DB_TYPE=postgresdb
-    - DB_POSTGRESDB_HOST=postgres
+    - DB_POSTGRESDB_HOST=n8n_postgres
     - DB_POSTGRESDB_USER=${POSTGRES_USER}
     - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
     - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
@@ -27,9 +27,9 @@ x-n8n: &service-n8n
       required: true
 
 services:
-  postgres:
+  n8n_postgres:
     image: postgres:16-alpine
-    hostname: postgres
+    hostname: n8n_postgres
     networks: ['demo']
     restart: unless-stopped
     environment:
@@ -37,7 +37,7 @@ services:
       - POSTGRES_PASSWORD
       - POSTGRES_DB
     volumes:
-      - postgres_storage:/var/lib/postgresql/data
+      - n8n_postgres_storage:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 5s
@@ -55,5 +55,11 @@ services:
       - n8n_storage:/home/node/.n8n
       - ./shared:/data/shared
     depends_on:
-      postgres:
+      n8n_postgres:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
